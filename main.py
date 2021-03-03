@@ -2,7 +2,9 @@ from tkinter import *
 from tkinter import messagebox
 import random
 import pyperclip
+import json
 
+ERROR_COLOR = "#b82828"
 BG_COLOR = "#fce8e9"
 LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 NUMBERS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -30,25 +32,60 @@ def get_data():
     website = entry_1.get()
     user = entry_2.get()
     password = entry_3.get()
-    if website == "" or user == "" or password == "":
-        error_label.config(text="Wrong/empty field", font=("Arial", 12, "bold"), fg="#b82828")
-    else:
+    json_dict = {website: {"Email/Username": user, "password": password,}}
+
+    def write_data():
         try:
-            with open("data.txt", "a") as file:
-                if messagebox.askokcancel(title="Confirm data", message=f"Are those details correct?\nWebsite: {website}\nEmail/Username: {user}\nPassword: {password}"):
-                    file.write(f"{website} | {user} | {password}\n")
-                    file.close()
-                    entry_1.delete(0, END)
-                    entry_3.delete(0, END)
-                    messagebox.showinfo("Success!", "Password saved.")
+            with open("data.json", "r") as file:
+                data = json.load(file)
+                if website in data:
+                    if messagebox.askokcancel(title="Account already exists", message=f"Website {website} already exists on database.\nDo you want to overwrite it?"):
+                        data.update(json_dict)
+                    else:
+                        raise KeyError
+                else:
+                    data.update(json_dict)
+            with open("data.json", "w") as file:
+                json.dump(data, file, indent=4)
+        except KeyError:
+            print("XD")
         except:
-            error_label.config(text="Somethind goes wrong", font=("Arial", 12, "bold"), fg="#b82828")
+            with open("data.json", "w") as file:
+                json.dump(json_dict, file, indent=4)
+        finally:
+            entry_1.delete(0, END)
+            entry_3.delete(0, END)
+
+    if website == "" or user == "" or password == "":
+        error_label.config(text="Wrong/empty field", font=("Arial", 12, "bold"), fg=ERROR_COLOR)
+    else:
+        if messagebox.askokcancel(title="Confirm data",
+                                  message=f"Are those details correct?\nWebsite: {website}\nEmail/Username: {user}\nPassword: {password}"):
+            return write_data()
+
+# ---------------------------- SEARCH WEBSITE ------------------------------- #
+
+def search_website():
+    website = entry_1.get()
+    if website == "":
+        error_label.config(text="Type website name", font=("Arial", 12, "bold"), fg=ERROR_COLOR)
+    try:
+        with open("data.json", "r") as file:
+            data = json.load(file)
+            info = data[website]
+            output_message = "\n".join([f"{var}: {info[var]}" for var in info])
+            print(output_message)
+            messagebox.showinfo(title=f"Information about {website}", message=output_message)
+    except FileNotFoundError:
+        error_label.config(text="You don\'t have any passwords yet.", font=("Arial", 12, "bold"), fg=ERROR_COLOR)
+
 
 # ---------------------------- UI SETUP ------------------------------- #
 
 window = Tk()
 window.config(padx=80, pady=80, bg = BG_COLOR)
 window.title("Password Manager")
+window.resizable(False, False)
 
 canvas = Canvas(width=300, height=200, bg=BG_COLOR, highlightthickness=0)
 logo = PhotoImage(file="logo.png")
@@ -58,10 +95,12 @@ canvas.grid(row=0, columnspan=3)
 
 
 label_1 = Label(text = "Website:", bg=BG_COLOR, font=("Arial", 12))
-entry_1 = Entry(width=40, font=("Arial", 12))
+entry_1 = Entry(font=("Arial", 12), width=22)
 entry_1.focus()
+search_button = Button(text = "Search", command=search_website, font=("Arial", 12), width=16)
 label_1.grid(row=1, column=0)
-entry_1.grid(row=1, column=1, columnspan=2)
+entry_1.grid(row=1, column=1)
+search_button.grid(row=1, column=2, sticky="E")
 
 label_2 = Label(text = "Email/Username:", bg=BG_COLOR, pady=6, font=("Arial", 12))
 entry_2 = Entry(width=40, font=("Arial", 12))
